@@ -1,7 +1,8 @@
 package ru.yandex.practicum.collector.controller;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,14 +13,15 @@ import ru.yandex.practicum.collector.mapper.HubEventMapper;
 import ru.yandex.practicum.collector.mapper.SensorEventMapper;
 import ru.yandex.practicum.collector.service.KafkaProducerService;
 
-import jakarta.validation.Valid;
-
 @RestController
-@RequiredArgsConstructor
-@Slf4j
 public class EventsController {
 
+    private static final Logger log = LoggerFactory.getLogger(EventsController.class);
     private final KafkaProducerService kafkaProducerService;
+
+    public EventsController(KafkaProducerService kafkaProducerService) {
+        this.kafkaProducerService = kafkaProducerService;
+    }
 
     @PostMapping("/events/sensors")
     public ResponseEntity<Void> collectSensorEvent(@Valid @RequestBody SensorEvent event) {

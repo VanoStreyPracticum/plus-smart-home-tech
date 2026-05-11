@@ -1,15 +1,13 @@
 package ru.yandex.practicum.collector.dto.sensor;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-
-@Getter @Setter @ToString(callSuper = true)
 public class SwitchSensorEvent extends SensorEvent {
     private boolean state;
 
+    public SwitchSensorEvent() {}
+
+    public boolean isState() { return state; }
+    public void setState(boolean state) { this.state = state; }
+
     @Override
-    public SensorEventType getType() {
-        return SensorEventType.SWITCH_SENSOR_EVENT;
-    }
+    public SensorEventType getType() { return SensorEventType.SWITCH_SENSOR_EVENT; }
 }

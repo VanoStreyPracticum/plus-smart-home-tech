@@ -2,7 +2,6 @@ package ru.yandex.practicum.collector.mapper;
 
 import ru.yandex.practicum.collector.dto.hub.*;
 import ru.yandex.practicum.kafka.telemetry.event.*;
-
 import java.util.stream.Collectors;
 
 public class HubEventMapper {
