@@ -3,8 +3,8 @@ package ru.yandex.practicum.analyzer.service;
 import com.google.protobuf.Empty;
 import com.google.protobuf.Timestamp;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import net.devh.boot.grpc.client.inject.GrpcClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.analyzer.model.*;
 import ru.yandex.practicum.analyzer.repository.*;
@@ -18,14 +18,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 public class ScenarioAnalyzer {
 
+    private static final Logger log = LoggerFactory.getLogger(ScenarioAnalyzer.class);
     private final ScenarioRepository scenarioRepository;
-
-    @GrpcClient("hub-router")
-    private HubRouterControllerBlockingStub hubRouterClient;
+    private final HubRouterControllerBlockingStub hubRouterClient;
 
     public void processSnapshot(SensorEventAvro snapshot) {
         String hubId = snapshot.getHubId();
@@ -34,7 +32,6 @@ public class ScenarioAnalyzer {
             return;
         }
 
-        // Собираем актуальные значения датчиков из payload
         Map<String, Object> sensorValues = extractSensorValues(snapshot);
 
         for (Scenario scenario : scenarios) {
@@ -48,17 +45,12 @@ public class ScenarioAnalyzer {
     }
 
     private Map<String, Object> extractSensorValues(SensorEventAvro snapshot) {
-        // Payload – union, определяем конкретный тип по instanceof
         Map<String, Object> values = new HashMap<>();
         Object payload = snapshot.getPayload();
         if (payload instanceof ClimateSensorAvro climate) {
             values.put("temperatureC", climate.getTemperatureC());
             values.put("humidity", climate.getHumidity());
             values.put("co2Level", climate.getCo2Level());
-            // Для упрощения id датчика совпадает с id события? В снапшоте payload может быть один.
-            // Но сценарии привязаны к конкретным датчикам. Нужно сопоставлять.
-            // В полной реализации нужно знать sensorId, но в упрощённом варианте предполагаем, что payload содержит поле id.
-            // Добавим заглушку: будем использовать snapshot.getId() как sensorId.
         } else if (payload instanceof LightSensorAvro light) {
             values.put("linkQuality", light.getLinkQuality());
             values.put("luminosity", light.getLuminosity());
@@ -71,7 +63,6 @@ public class ScenarioAnalyzer {
             values.put("temperatureC", temp.getTemperatureC());
             values.put("temperatureF", temp.getTemperatureF());
         }
-        // Добавляем sensorId
         values.put("sensorId", snapshot.getId());
         return values;
     }
@@ -79,11 +70,10 @@ public class ScenarioAnalyzer {
     private boolean checkCondition(ScenarioCondition sc, Map<String, Object> sensorValues) {
         Condition condition = sc.getCondition();
         String sensorId = sc.getSensor().getId();
-        // Проверяем, что sensorId совпадает с тем, что в значениях (если есть)
         if (!sensorId.equals(sensorValues.get("sensorId"))) {
-            return false; // в реальности надо матчить по датчику
+            return false;
         }
-        Object actualObj = sensorValues.get(condition.getType().toLowerCase()); // TEMPERATURE -> temperaturec
+        Object actualObj = sensorValues.get(condition.getType().toLowerCase());
         if (actualObj == null) return false;
 
         int actualValue;

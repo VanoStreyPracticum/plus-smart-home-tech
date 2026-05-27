@@ -1,7 +1,6 @@
 package ru.yandex.practicum.analyzer.processor;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
@@ -11,6 +10,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.analyzer.service.ScenarioAnalyzer;
@@ -24,10 +25,10 @@ import java.util.Properties;
 import java.util.UUID;
 
 @Component
-@Slf4j
 @RequiredArgsConstructor
 public class SnapshotProcessor {
 
+    private static final Logger log = LoggerFactory.getLogger(SnapshotProcessor.class);
     private final ScenarioAnalyzer analyzer;
     private Consumer<String, byte[]> consumer;
 
@@ -41,7 +42,7 @@ public class SnapshotProcessor {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false"); // ручной коммит
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         this.consumer = new KafkaConsumer<>(props);
 
         consumer.subscribe(List.of("telemetry.snapshots.v1"));

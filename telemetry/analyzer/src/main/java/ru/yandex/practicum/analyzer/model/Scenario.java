@@ -1,22 +1,22 @@
 package ru.yandex.practicum.analyzer.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "scenarios")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class Scenario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     @Column(name = "hub_id")
     private String hubId;
-
     private String name;
 
     @OneToMany(mappedBy = "scenario", cascade = CascadeType.ALL, orphanRemoval = true)
