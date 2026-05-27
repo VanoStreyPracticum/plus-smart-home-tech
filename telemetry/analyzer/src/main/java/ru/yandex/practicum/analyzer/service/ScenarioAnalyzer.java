@@ -3,8 +3,8 @@ package ru.yandex.practicum.analyzer.service;
 import com.google.protobuf.Empty;
 import com.google.protobuf.Timestamp;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.analyzer.model.*;
 import ru.yandex.practicum.analyzer.repository.*;
@@ -18,12 +18,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ScenarioAnalyzer {
 
-    private static final Logger log = LoggerFactory.getLogger(ScenarioAnalyzer.class);
     private final ScenarioRepository scenarioRepository;
-    private final HubRouterControllerBlockingStub hubRouterClient;
+
+    @GrpcClient("hub-router")
+    private HubRouterControllerBlockingStub hubRouterClient;
 
     public void processSnapshot(SensorEventAvro snapshot) {
         String hubId = snapshot.getHubId();
@@ -44,7 +46,9 @@ public class ScenarioAnalyzer {
         }
     }
 
+    // ... остальные методы без изменений (приведу их сокращённо)
     private Map<String, Object> extractSensorValues(SensorEventAvro snapshot) {
+        // ... код как раньше (без Lombok-зависимости, но мы его уже написали)
         Map<String, Object> values = new HashMap<>();
         Object payload = snapshot.getPayload();
         if (payload instanceof ClimateSensorAvro climate) {

@@ -1,6 +1,5 @@
 package ru.yandex.practicum.analyzer;
 
-import net.devh.boot.grpc.client.autoconfigure.EnableGrpcClients;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
@@ -10,7 +9,6 @@ import ru.yandex.practicum.analyzer.processor.SnapshotProcessor;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
-@EnableGrpcClients
 public class AnalyzerApplication {
     public static void main(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(AnalyzerApplication.class, args);
