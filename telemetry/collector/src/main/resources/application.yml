@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: collector
+  kafka:
+    bootstrap-servers: localhost:9092
+
+server:
+  port: 8080
+
+logging:
+  level:
+    ru.yandex.practicum: DEBUG
