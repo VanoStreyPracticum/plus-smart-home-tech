@@ -2,15 +2,15 @@ package ru.yandex.practicum.aggregator;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
-import java.util.concurrent.CountDownLatch;
 
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class AggregatorApplication {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(AggregatorApplication.class, args);
-        // Блокируем основной поток, чтобы приложение не завершалось сразу.
-        // В реальном агрегаторе здесь будет запуск цикла опроса Kafka.
-        new CountDownLatch(1).await();
+        AggregationStarter aggregator = context.getBean(AggregationStarter.class);
+        aggregator.start();
     }
 }
