@@ -41,6 +41,6 @@ services:
     volumes:
       - ./hub-router.jar:/app/hub-router.jar
     working_dir: /app
-    command: ["java", "-jar", "hub-router.jar", "--server.port=59091"]
+    command: ["java", "-jar", "hub-router.jar", "--server.port=59090"]
     ports:
-      - "59091:59091"
+      - "59090:59090"
