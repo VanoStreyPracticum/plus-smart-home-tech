@@ -33,3 +33,14 @@ services:
                              --partitions 1 --replication-factor 1 --if-not-exists \
                              --bootstrap-server kafka:29092'"
     init: true
+  hub-router:
+    image: eclipse-temurin:21-jre
+    container_name: hub-router
+    depends_on:
+      - kafka
+    volumes:
+      - ./hub-router.jar:/app/hub-router.jar
+    working_dir: /app
+    command: ["java", "-jar", "hub-router.jar", "--server.port=59091"]
+    ports:
+      - "59091:59091"
