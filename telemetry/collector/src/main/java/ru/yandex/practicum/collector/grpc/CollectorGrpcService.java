@@ -2,9 +2,9 @@ package ru.yandex.practicum.collector.grpc;
 
 import com.google.protobuf.Empty;
 import io.grpc.stub.StreamObserver;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.yandex.practicum.collector.dto.hub.*;
 import ru.yandex.practicum.collector.dto.sensor.*;
 import ru.yandex.practicum.collector.mapper.HubEventMapper;
@@ -14,16 +14,19 @@ import ru.yandex.practicum.grpc.telemetry.collector.*;
 
 import java.time.Instant;
 
-@Slf4j
 @GrpcService
-@RequiredArgsConstructor
 public class CollectorGrpcService extends CollectorControllerGrpc.CollectorControllerImplBase {
 
+    private static final Logger log = LoggerFactory.getLogger(CollectorGrpcService.class);
     private final KafkaProducerService kafkaProducerService;
+
+    public CollectorGrpcService(KafkaProducerService kafkaProducerService) {
+        this.kafkaProducerService = kafkaProducerService;
+    }
 
     @Override
     public void collectSensorEvent(SensorEventProto request, StreamObserver<Empty> responseObserver) {
-        SensorEvent event = mapProtoToSensorEvent(request);
+        ru.yandex.practicum.collector.dto.sensor.SensorEvent event = mapProtoToSensorEvent(request);
         log.info("Received gRPC sensor event: {}", event);
         kafkaProducerService.send("telemetry.sensors.v1", event.getHubId(), SensorEventMapper.toAvro(event));
         responseObserver.onNext(Empty.getDefaultInstance());
@@ -32,14 +35,14 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
 
     @Override
     public void collectHubEvent(HubEventProto request, StreamObserver<Empty> responseObserver) {
-        HubEvent event = mapProtoToHubEvent(request);
+        ru.yandex.practicum.collector.dto.hub.HubEvent event = mapProtoToHubEvent(request);
         log.info("Received gRPC hub event: {}", event);
         kafkaProducerService.send("telemetry.hubs.v1", event.getHubId(), HubEventMapper.toAvro(event));
         responseObserver.onNext(Empty.getDefaultInstance());
         responseObserver.onCompleted();
     }
 
-    private SensorEvent mapProtoToSensorEvent(SensorEventProto proto) {
+    private ru.yandex.practicum.collector.dto.sensor.SensorEvent mapProtoToSensorEvent(SensorEventProto proto) {
         if (proto.hasMotionSensor()) {
             MotionSensorProto p = proto.getMotionSensor();
             MotionSensorEvent e = new MotionSensorEvent();
@@ -80,13 +83,13 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
         throw new IllegalArgumentException("Unknown sensor event type");
     }
 
-    private void fillCommonSensorFields(SensorEvent event, SensorEventProto proto) {
+    private void fillCommonSensorFields(ru.yandex.practicum.collector.dto.sensor.SensorEvent event, SensorEventProto proto) {
         event.setId(proto.getId());
         event.setHubId(proto.getHubId());
         event.setTimestamp(Instant.ofEpochSecond(proto.getTimestamp().getSeconds(), proto.getTimestamp().getNanos()));
     }
 
-    private HubEvent mapProtoToHubEvent(HubEventProto proto) {
+    private ru.yandex.practicum.collector.dto.hub.HubEvent mapProtoToHubEvent(HubEventProto proto) {
         if (proto.hasDeviceAdded()) {
             DeviceAddedEventProto p = proto.getDeviceAdded();
             DeviceAddedEvent e = new DeviceAddedEvent();
@@ -132,7 +135,7 @@ public class CollectorGrpcService extends CollectorControllerGrpc.CollectorContr
         throw new IllegalArgumentException("Unknown hub event type");
     }
 
-    private void fillCommonHubFields(HubEvent event, HubEventProto proto) {
+    private void fillCommonHubFields(ru.yandex.practicum.collector.dto.hub.HubEvent event, HubEventProto proto) {
         event.setHubId(proto.getHubId());
         event.setTimestamp(Instant.ofEpochSecond(proto.getTimestamp().getSeconds(), proto.getTimestamp().getNanos()));
     }
