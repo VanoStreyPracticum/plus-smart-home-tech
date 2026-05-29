@@ -1,6 +1,5 @@
 package ru.yandex.practicum.analyzer.processor;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DecoderFactory;
@@ -13,6 +12,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.analyzer.service.HubEventService;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
 import jakarta.annotation.PreDestroy;
@@ -27,8 +27,11 @@ import java.util.UUID;
 public class HubEventProcessor implements Runnable {
 
     private final Consumer<String, byte[]> consumer;
+    private final HubEventService hubEventService;
 
-    public HubEventProcessor(@Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
+    public HubEventProcessor(@Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
+                             HubEventService hubEventService) {
+        this.hubEventService = hubEventService;
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "analyzer-hub-events-" + UUID.randomUUID());
@@ -48,10 +51,26 @@ public class HubEventProcessor implements Runnable {
                 try {
                     HubEventAvro event = deserializeAvro(record.value(), HubEventAvro.class);
                     log.info("Received hub event: {}", event);
+                    processEvent(event);
                 } catch (Exception e) {
                     log.error("Error processing hub event", e);
                 }
             });
+        }
+    }
+
+    private void processEvent(HubEventAvro event) {
+        Object payload = event.getPayload();
+        if (payload instanceof DeviceAddedEventAvro) {
+            hubEventService.handleDeviceAdded(event);
+        } else if (payload instanceof DeviceRemovedEventAvro) {
+            hubEventService.handleDeviceRemoved(event);
+        } else if (payload instanceof ScenarioAddedEventAvro) {
+            hubEventService.handleScenarioAdded(event);
+        } else if (payload instanceof ScenarioRemovedEventAvro) {
+            hubEventService.handleScenarioRemoved(event);
+        } else {
+            log.warn("Unknown hub event type: {}", payload.getClass());
         }
     }
 
