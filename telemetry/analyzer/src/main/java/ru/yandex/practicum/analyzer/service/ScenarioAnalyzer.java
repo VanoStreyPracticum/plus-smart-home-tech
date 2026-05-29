@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.analyzer.model.*;
 import ru.yandex.practicum.analyzer.repository.*;
+import ru.yandex.practicum.grpc.telemetry.collector.ActionTypeProto;
 import ru.yandex.practicum.grpc.telemetry.collector.DeviceActionProto;
 import ru.yandex.practicum.grpc.telemetry.event.DeviceActionRequest;
 import ru.yandex.practicum.grpc.telemetry.hubrouter.HubRouterControllerGrpc.HubRouterControllerBlockingStub;
@@ -32,28 +33,28 @@ public class ScenarioAnalyzer {
         String hubId = snapshot.getHubId();
         List<Scenario> scenarios = scenarioRepository.findByHubId(hubId);
         if (scenarios.isEmpty()) {
+            log.debug("No scenarios for hub {}", hubId);
             return;
         }
 
-        // Извлекаем значения из всех состояний датчиков в снапшоте
+        // Извлекаем значения датчиков, ключи соответствуют типам условий
         Map<String, Object> sensorValues = new HashMap<>();
         snapshot.getSensorsState().forEach((sensorId, state) -> {
             Object data = state.getData();
             if (data instanceof ClimateSensorAvro climate) {
-                sensorValues.put("temperatureC", climate.getTemperatureC());
-                sensorValues.put("humidity", climate.getHumidity());
-                sensorValues.put("co2Level", climate.getCo2Level());
+                sensorValues.put("TEMPERATURE", climate.getTemperatureC());
+                sensorValues.put("HUMIDITY", climate.getHumidity());
+                sensorValues.put("CO2LEVEL", climate.getCo2Level());
             } else if (data instanceof LightSensorAvro light) {
-                sensorValues.put("luminosity", light.getLuminosity());
-                sensorValues.put("linkQuality", light.getLinkQuality());
+                sensorValues.put("LUMINOSITY", light.getLuminosity());
+                sensorValues.put("LINK_QUALITY", light.getLinkQuality());
             } else if (data instanceof MotionSensorAvro motion) {
-                sensorValues.put("motion", motion.getMotion());
-                sensorValues.put("voltage", motion.getVoltage());
+                sensorValues.put("MOTION", motion.getMotion());
+                sensorValues.put("VOLTAGE", motion.getVoltage());
             } else if (data instanceof SwitchSensorAvro sw) {
-                sensorValues.put("state", sw.getState());
+                sensorValues.put("SWITCH", sw.getState());
             } else if (data instanceof TemperatureSensorAvro temp) {
-                sensorValues.put("temperatureC", temp.getTemperatureC());
-                sensorValues.put("temperatureF", temp.getTemperatureF());
+                sensorValues.put("TEMPERATURE", temp.getTemperatureC());
             }
         });
 
@@ -63,16 +64,20 @@ public class ScenarioAnalyzer {
             if (conditionsMet) {
                 log.info("Executing scenario '{}' for hub {}", scenario.getName(), hubId);
                 executeActions(scenario, sensorValues);
+            } else {
+                log.debug("Scenario '{}' conditions not met", scenario.getName());
             }
         }
     }
 
     private boolean checkCondition(ScenarioCondition sc, Map<String, Object> sensorValues) {
         Condition condition = sc.getCondition();
-        String sensorId = sc.getSensor().getId();
-
-        Object actualObj = sensorValues.get(condition.getType().toLowerCase());
-        if (actualObj == null) return false;
+        String type = condition.getType().toUpperCase(); // TEMPERATURE, MOTION, SWITCH, ...
+        Object actualObj = sensorValues.get(type);
+        if (actualObj == null) {
+            log.warn("No sensor value for condition type {} (sensor {})", type, sc.getSensor().getId());
+            return false;
+        }
 
         int actualValue;
         if (actualObj instanceof Boolean) {
@@ -82,7 +87,9 @@ public class ScenarioAnalyzer {
         }
 
         int reference = condition.getValue();
-        return switch (condition.getOperation().toUpperCase()) {
+        String operation = condition.getOperation().toUpperCase();
+        log.debug("Checking condition: {} {} {} (actual: {})", type, operation, reference, actualValue);
+        return switch (operation) {
             case "EQUALS" -> actualValue == reference;
             case "GREATER_THAN" -> actualValue > reference;
             case "LOWER_THAN" -> actualValue < reference;
@@ -95,7 +102,7 @@ public class ScenarioAnalyzer {
             Action action = sa.getAction();
             DeviceActionProto deviceAction = DeviceActionProto.newBuilder()
                     .setSensorId(sa.getSensor().getId())
-                    .setType(ru.yandex.practicum.grpc.telemetry.collector.ActionTypeProto.valueOf(action.getType()))
+                    .setType(ActionTypeProto.valueOf(action.getType()))
                     .setValue(action.getValue() != null ? action.getValue() : 0)
                     .build();
 
