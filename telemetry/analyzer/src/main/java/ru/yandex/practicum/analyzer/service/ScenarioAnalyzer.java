@@ -95,7 +95,7 @@ public class ScenarioAnalyzer {
             Action action = sa.getAction();
             DeviceActionProto deviceAction = DeviceActionProto.newBuilder()
                     .setSensorId(sa.getSensor().getId())
-                    .setType(action.getType())
+                    .setType(ru.yandex.practicum.grpc.telemetry.collector.ActionTypeProto.valueOf(action.getType()))
                     .setValue(action.getValue() != null ? action.getValue() : 0)
                     .build();
 
