@@ -14,7 +14,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.analyzer.service.ScenarioAnalyzer;
-import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
+import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
 import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayInputStream;
@@ -49,7 +49,7 @@ public class SnapshotProcessor {
             ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(500));
             records.forEach(record -> {
                 try {
-                    SensorEventAvro snapshot = deserializeAvro(record.value(), SensorEventAvro.class);
+                    SensorsSnapshotAvro snapshot = deserializeAvro(record.value(), SensorsSnapshotAvro.class);
                     log.debug("Processing snapshot for hub {}", snapshot.getHubId());
                     analyzer.processSnapshot(snapshot);
                 } catch (Exception e) {

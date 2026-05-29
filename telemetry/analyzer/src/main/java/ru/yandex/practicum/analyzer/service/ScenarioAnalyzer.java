@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.analyzer.model.*;
 import ru.yandex.practicum.analyzer.repository.*;
 import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
@@ -15,7 +16,6 @@ import ru.yandex.practicum.kafka.telemetry.event.*;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -27,14 +27,35 @@ public class ScenarioAnalyzer {
     @GrpcClient("hub-router")
     private HubRouterControllerBlockingStub hubRouterClient;
 
-    public void processSnapshot(SensorEventAvro snapshot) {
+    @Transactional(readOnly = true)
+    public void processSnapshot(SensorsSnapshotAvro snapshot) {
         String hubId = snapshot.getHubId();
         List<Scenario> scenarios = scenarioRepository.findByHubId(hubId);
         if (scenarios.isEmpty()) {
             return;
         }
 
-        Map<String, Object> sensorValues = extractSensorValues(snapshot);
+        // Извлекаем значения из всех состояний датчиков в снапшоте
+        Map<String, Object> sensorValues = new HashMap<>();
+        snapshot.getSensorsState().forEach((sensorId, state) -> {
+            Object data = state.getData();
+            if (data instanceof ClimateSensorAvro climate) {
+                sensorValues.put("temperatureC", climate.getTemperatureC());
+                sensorValues.put("humidity", climate.getHumidity());
+                sensorValues.put("co2Level", climate.getCo2Level());
+            } else if (data instanceof LightSensorAvro light) {
+                sensorValues.put("luminosity", light.getLuminosity());
+                sensorValues.put("linkQuality", light.getLinkQuality());
+            } else if (data instanceof MotionSensorAvro motion) {
+                sensorValues.put("motion", motion.getMotion());
+                sensorValues.put("voltage", motion.getVoltage());
+            } else if (data instanceof SwitchSensorAvro sw) {
+                sensorValues.put("state", sw.getState());
+            } else if (data instanceof TemperatureSensorAvro temp) {
+                sensorValues.put("temperatureC", temp.getTemperatureC());
+                sensorValues.put("temperatureF", temp.getTemperatureF());
+            }
+        });
 
         for (Scenario scenario : scenarios) {
             boolean conditionsMet = scenario.getConditions().stream()
@@ -46,37 +67,10 @@ public class ScenarioAnalyzer {
         }
     }
 
-    // ... остальные методы без изменений (приведу их сокращённо)
-    private Map<String, Object> extractSensorValues(SensorEventAvro snapshot) {
-        // ... код как раньше (без Lombok-зависимости, но мы его уже написали)
-        Map<String, Object> values = new HashMap<>();
-        Object payload = snapshot.getPayload();
-        if (payload instanceof ClimateSensorAvro climate) {
-            values.put("temperatureC", climate.getTemperatureC());
-            values.put("humidity", climate.getHumidity());
-            values.put("co2Level", climate.getCo2Level());
-        } else if (payload instanceof LightSensorAvro light) {
-            values.put("linkQuality", light.getLinkQuality());
-            values.put("luminosity", light.getLuminosity());
-        } else if (payload instanceof MotionSensorAvro motion) {
-            values.put("motion", motion.getMotion());
-            values.put("voltage", motion.getVoltage());
-        } else if (payload instanceof SwitchSensorAvro sw) {
-            values.put("state", sw.getState());
-        } else if (payload instanceof TemperatureSensorAvro temp) {
-            values.put("temperatureC", temp.getTemperatureC());
-            values.put("temperatureF", temp.getTemperatureF());
-        }
-        values.put("sensorId", snapshot.getId());
-        return values;
-    }
-
     private boolean checkCondition(ScenarioCondition sc, Map<String, Object> sensorValues) {
         Condition condition = sc.getCondition();
         String sensorId = sc.getSensor().getId();
-        if (!sensorId.equals(sensorValues.get("sensorId"))) {
-            return false;
-        }
+
         Object actualObj = sensorValues.get(condition.getType().toLowerCase());
         if (actualObj == null) return false;
 
