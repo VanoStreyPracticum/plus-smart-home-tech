@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.interaction.*;
 import ru.yandex.practicum.store.model.ProductEntity;
 import ru.yandex.practicum.store.repository.ProductRepository;
-
 import java.util.UUID;
 
 @RestController
@@ -24,10 +23,11 @@ public class StoreController {
                                         @RequestParam(defaultValue = "20") int size,
                                         @RequestParam(defaultValue = "productName,asc") String[] sort) {
         ProductCategory productCategory = ProductCategory.valueOf(category.toUpperCase());
-        String[] sortParams = sort[0].split(",");
-        String property = sortParams[0];
+        String sortParam = sort[0];
+        String[] parts = sortParam.split(",");
+        String property = parts[0].trim();
         Sort.Direction direction = Sort.Direction.ASC;
-        if (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) {
+        if (parts.length > 1 && parts[1].trim().equalsIgnoreCase("desc")) {
             direction = Sort.Direction.DESC;
         }
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(direction, property));
@@ -60,7 +60,7 @@ public class StoreController {
 
     @PostMapping("/removeProductFromStore")
     public Boolean removeProductFromStore(@RequestBody String productId) {
-        String clean = productId.replaceAll("^\"|\"$", "");
+        String clean = productId.replaceAll("^\"|\"$", "").trim();
         UUID id = UUID.fromString(clean);
         ProductEntity entity = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
