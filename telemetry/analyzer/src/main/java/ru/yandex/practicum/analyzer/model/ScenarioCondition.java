@@ -1,14 +1,13 @@
 package ru.yandex.practicum.analyzer.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 @Entity
 @Table(name = "scenario_conditions")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class ScenarioCondition {
     @EmbeddedId
     private ScenarioConditionId id;
@@ -24,4 +23,9 @@ public class ScenarioCondition {
     @ManyToOne
     @MapsId("conditionId")
     private Condition condition;
+
+    // Явные геттеры для Lombok-совместимости
+    public Condition getCondition() { return condition; }
+    public Sensor getSensor() { return sensor; }
+    public Scenario getScenario() { return scenario; }
 }
