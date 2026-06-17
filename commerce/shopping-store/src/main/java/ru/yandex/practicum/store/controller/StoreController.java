@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.interaction.*;
 import ru.yandex.practicum.store.model.ProductEntity;
@@ -25,11 +24,13 @@ public class StoreController {
                                         @RequestParam(defaultValue = "20") int size,
                                         @RequestParam(defaultValue = "productName,asc") String[] sort) {
         ProductCategory productCategory = ProductCategory.valueOf(category.toUpperCase());
-        Sort.Order order = new Sort.Order(Sort.Direction.ASC, sort[0].split(",")[0]);
-        if (sort[0].contains(",desc")) {
-            order = order.with(Sort.Direction.DESC);
+        String[] sortParams = sort[0].split(",");
+        String property = sortParams[0];
+        Sort.Direction direction = Sort.Direction.ASC;
+        if (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) {
+            direction = Sort.Direction.DESC;
         }
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(order));
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(direction, property));
         return productRepository.findByCategory(productCategory, pageRequest)
                 .map(this::toDto);
     }
@@ -37,8 +38,8 @@ public class StoreController {
     @PutMapping
     public ProductDto createNewProduct(@RequestBody ProductDto productDto) {
         ProductEntity entity = toEntity(productDto);
-        entity.setProductId(UUID.randomUUID()); // генерируем новый ID
-        entity.setState(ProductState.ACTIVE);
+        entity.setProductId(UUID.randomUUID());
+        // Не переопределяем статус, берём из запроса
         entity = productRepository.save(entity);
         return toDto(entity);
     }
@@ -53,13 +54,16 @@ public class StoreController {
         entity.setPrice(productDto.getPrice());
         entity.setCategory(productDto.getProductCategory());
         entity.setQuantityState(productDto.getQuantityState());
+        entity.setState(productDto.getProductState()); // обновляем статус
         entity = productRepository.save(entity);
         return toDto(entity);
     }
 
     @PostMapping("/removeProductFromStore")
     public Boolean removeProductFromStore(@RequestBody String productId) {
-        UUID id = UUID.fromString(productId);
+        // Убираем возможные кавычки из JSON-строки
+        String clean = productId.replaceAll("^\"|\"$", "");
+        UUID id = UUID.fromString(clean);
         ProductEntity entity = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         entity.setState(ProductState.DEACTIVATE);
@@ -68,10 +72,11 @@ public class StoreController {
     }
 
     @PostMapping("/quantityState")
-    public Boolean setProductQuantityState(@RequestBody SetProductQuantityStateRequest request) {
-        ProductEntity entity = productRepository.findById(request.getProductId())
+    public Boolean setProductQuantityState(@RequestParam UUID productId,
+                                           @RequestParam QuantityState quantityState) {
+        ProductEntity entity = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
-        entity.setQuantityState(request.getQuantityState());
+        entity.setQuantityState(quantityState);
         productRepository.save(entity);
         return true;
     }
