@@ -39,7 +39,6 @@ public class StoreController {
     public ProductDto createNewProduct(@RequestBody ProductDto productDto) {
         ProductEntity entity = toEntity(productDto);
         entity.setProductId(UUID.randomUUID());
-        // Не переопределяем статус, берём из запроса
         entity = productRepository.save(entity);
         return toDto(entity);
     }
@@ -54,14 +53,13 @@ public class StoreController {
         entity.setPrice(productDto.getPrice());
         entity.setCategory(productDto.getProductCategory());
         entity.setQuantityState(productDto.getQuantityState());
-        entity.setState(productDto.getProductState()); // обновляем статус
+        entity.setState(productDto.getProductState());
         entity = productRepository.save(entity);
         return toDto(entity);
     }
 
     @PostMapping("/removeProductFromStore")
     public Boolean removeProductFromStore(@RequestBody String productId) {
-        // Убираем возможные кавычки из JSON-строки
         String clean = productId.replaceAll("^\"|\"$", "");
         UUID id = UUID.fromString(clean);
         ProductEntity entity = productRepository.findById(id)
