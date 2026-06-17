@@ -1,72 +1,111 @@
 package ru.yandex.practicum.store.controller;
+
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.interaction.*;
 import ru.yandex.practicum.store.model.ProductEntity;
 import ru.yandex.practicum.store.repository.ProductRepository;
-import java.util.List;
-import java.util.stream.Collectors;
+
+import java.util.UUID;
 
 @RestController
+@RequestMapping("/api/v1/shopping-store")
 @RequiredArgsConstructor
-public class StoreController implements ShoppingStoreFeignClient {
+public class StoreController {
+
     private final ProductRepository productRepository;
 
-    @Override
-    public List<ProductDto> getProducts(ProductCategory category) {
-        List<ProductEntity> entities = category != null ?
-                productRepository.findByCategory(category) : productRepository.findAll();
-        return entities.stream().map(this::toDto).collect(Collectors.toList());
+    @GetMapping
+    public Page<ProductDto> getProducts(@RequestParam String category,
+                                        @RequestParam(defaultValue = "0") int page,
+                                        @RequestParam(defaultValue = "20") int size,
+                                        @RequestParam(defaultValue = "productName,asc") String[] sort) {
+        ProductCategory productCategory = ProductCategory.valueOf(category.toUpperCase());
+        Sort.Order order = new Sort.Order(Sort.Direction.ASC, sort[0].split(",")[0]);
+        if (sort[0].contains(",desc")) {
+            order = order.with(Sort.Direction.DESC);
+        }
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(order));
+        return productRepository.findByCategory(productCategory, pageRequest)
+                .map(this::toDto);
     }
 
-    @Override
-    public ProductDto getProduct(Long id) {
-        return toDto(productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found")));
-    }
-
-    @Override
-    public ProductDto addProduct(ProductDto productDto) {
+    @PutMapping
+    public ProductDto createNewProduct(@RequestBody ProductDto productDto) {
         ProductEntity entity = toEntity(productDto);
+        entity.setProductId(UUID.randomUUID()); // генерируем новый ID
         entity.setState(ProductState.ACTIVE);
-        return toDto(productRepository.save(entity));
+        entity = productRepository.save(entity);
+        return toDto(entity);
     }
 
-    @Override
-    public ProductDto updateProduct(Long id, ProductDto productDto) {
-        ProductEntity entity = productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
-        entity.setName(productDto.getName());
+    @PostMapping
+    public ProductDto updateProduct(@RequestBody ProductDto productDto) {
+        ProductEntity entity = productRepository.findById(productDto.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        entity.setProductName(productDto.getProductName());
         entity.setDescription(productDto.getDescription());
+        entity.setImageSrc(productDto.getImageSrc());
         entity.setPrice(productDto.getPrice());
-        entity.setCategory(productDto.getCategory());
+        entity.setCategory(productDto.getProductCategory());
         entity.setQuantityState(productDto.getQuantityState());
-        return toDto(productRepository.save(entity));
+        entity = productRepository.save(entity);
+        return toDto(entity);
     }
 
-    @Override
-    public ProductDto deactivateProduct(Long id) {
-        ProductEntity entity = productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
+    @PostMapping("/removeProductFromStore")
+    public Boolean removeProductFromStore(@RequestBody String productId) {
+        UUID id = UUID.fromString(productId);
+        ProductEntity entity = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
         entity.setState(ProductState.DEACTIVATE);
-        return toDto(productRepository.save(entity));
+        productRepository.save(entity);
+        return true;
     }
 
-    @Override
-    public ProductDto setQuantityState(Long id, QuantityState quantityState) {
-        ProductEntity entity = productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
-        entity.setQuantityState(quantityState);
-        return toDto(productRepository.save(entity));
+    @PostMapping("/quantityState")
+    public Boolean setProductQuantityState(@RequestBody SetProductQuantityStateRequest request) {
+        ProductEntity entity = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        entity.setQuantityState(request.getQuantityState());
+        productRepository.save(entity);
+        return true;
+    }
+
+    @GetMapping("/{productId}")
+    public ProductDto getProduct(@PathVariable UUID productId) {
+        ProductEntity entity = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        return toDto(entity);
     }
 
     private ProductDto toDto(ProductEntity entity) {
         return ProductDto.builder()
-                .id(entity.getId()).name(entity.getName()).description(entity.getDescription())
-                .price(entity.getPrice()).category(entity.getCategory())
-                .quantityState(entity.getQuantityState()).state(entity.getState()).build();
+                .productId(entity.getProductId())
+                .productName(entity.getProductName())
+                .description(entity.getDescription())
+                .imageSrc(entity.getImageSrc())
+                .quantityState(entity.getQuantityState())
+                .productState(entity.getState())
+                .productCategory(entity.getCategory())
+                .price(entity.getPrice())
+                .build();
     }
 
     private ProductEntity toEntity(ProductDto dto) {
         return ProductEntity.builder()
-                .id(dto.getId()).name(dto.getName()).description(dto.getDescription())
-                .price(dto.getPrice()).category(dto.getCategory())
-                .quantityState(dto.getQuantityState()).state(dto.getState()).build();
+                .productId(dto.getProductId())
+                .productName(dto.getProductName())
+                .description(dto.getDescription())
+                .imageSrc(dto.getImageSrc())
+                .price(dto.getPrice())
+                .category(dto.getProductCategory())
+                .quantityState(dto.getQuantityState())
+                .state(dto.getProductState())
+                .build();
     }
 }

@@ -1,11 +1,12 @@
 package ru.yandex.practicum.cart.service;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.interaction.*;
 import ru.yandex.practicum.cart.model.CartEntity;
 import ru.yandex.practicum.cart.repository.CartRepository;
-import java.util.Map;
-import java.util.stream.Collectors;
+
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -15,49 +16,66 @@ public class CartService {
 
     public ShoppingCartDto getCart(String userName) {
         CartEntity entity = cartRepository.findByUserName(userName)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseGet(() -> createEmptyCart(userName));
         return toDto(entity);
     }
 
-    public ShoppingCartDto addToCart(String userName, ChangeCartRequestDto request) {
+    public ShoppingCartDto addProducts(String userName, Map<UUID, Integer> products) {
         CartEntity cart = cartRepository.findByUserName(userName)
-                .orElse(CartEntity.builder().userName(userName).products(Map.of()).active(true).build());
+                .orElseGet(() -> createEmptyCart(userName));
         // проверка на складе
         ShoppingCartDto tempCart = toDto(cart);
-        tempCart.getProducts().putAll(request.getProducts());
-        Map<Long, Boolean> availability = warehouseFeignClient.checkCart(tempCart);
+        tempCart.getProducts().putAll(products);
+        Map<UUID, Boolean> availability = warehouseFeignClient.checkCart(tempCart);
         if (availability.containsValue(false)) {
-            throw new RuntimeException("Not enough stock for: " +
-                availability.entrySet().stream().filter(e -> !e.getValue()).map(e -> e.getKey().toString()).collect(Collectors.joining(",")));
+            throw new RuntimeException("Not enough stock for some products");
         }
-        cart.getProducts().putAll(request.getProducts());
-        cart.setActive(true);
+        cart.getProducts().putAll(products);
         cart = cartRepository.save(cart);
         return toDto(cart);
     }
 
-    public ShoppingCartDto updateCart(String userName, ChangeCartRequestDto request) {
+    public ShoppingCartDto changeQuantity(String userName, ChangeProductQuantityRequest request) {
         CartEntity cart = cartRepository.findByUserName(userName)
                 .orElseThrow(() -> new RuntimeException("Cart not found"));
-        cart.setProducts(request.getProducts());
+        if (request.getNewQuantity() <= 0) {
+            cart.getProducts().remove(request.getProductId());
+        } else {
+            cart.getProducts().put(request.getProductId(), request.getNewQuantity());
+        }
         cart = cartRepository.save(cart);
         return toDto(cart);
     }
 
-    public ShoppingCartDto deactivateCart(String userName) {
+    public ShoppingCartDto removeProducts(String userName, List<UUID> productIds) {
+        CartEntity cart = cartRepository.findByUserName(userName)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+        productIds.forEach(cart.getProducts()::remove);
+        cart = cartRepository.save(cart);
+        return toDto(cart);
+    }
+
+    public void deactivateCart(String userName) {
         CartEntity cart = cartRepository.findByUserName(userName)
                 .orElseThrow(() -> new RuntimeException("Cart not found"));
         cart.setActive(false);
-        cart = cartRepository.save(cart);
-        return toDto(cart);
+        cartRepository.save(cart);
+    }
+
+    private CartEntity createEmptyCart(String userName) {
+        CartEntity cart = CartEntity.builder()
+                .shoppingCartId(UUID.randomUUID())
+                .userName(userName)
+                .products(new HashMap<>())
+                .active(true)
+                .build();
+        return cartRepository.save(cart);
     }
 
     private ShoppingCartDto toDto(CartEntity entity) {
         return ShoppingCartDto.builder()
-                .id(entity.getId())
-                .userName(entity.getUserName())
+                .shoppingCartId(entity.getShoppingCartId())
                 .products(entity.getProducts())
-                .active(entity.isActive())
                 .build();
     }
 }
