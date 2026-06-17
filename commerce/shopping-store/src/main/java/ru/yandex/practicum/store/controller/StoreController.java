@@ -30,7 +30,8 @@ public class StoreController {
         if (parts.length > 1 && parts[1].trim().equalsIgnoreCase("desc")) {
             direction = Sort.Direction.DESC;
         }
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(direction, property));
+        // Используем прямой метод PageRequest.of с direction и property
+        PageRequest pageRequest = PageRequest.of(page, size, direction, property);
         return productRepository.findByCategory(productCategory, pageRequest)
                 .map(this::toDto);
     }
