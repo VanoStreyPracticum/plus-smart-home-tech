@@ -2,8 +2,9 @@ package ru.yandex.practicum.store.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.interaction.*;
 import ru.yandex.practicum.store.model.ProductEntity;
@@ -19,20 +20,9 @@ public class StoreController {
 
     @GetMapping
     public Page<ProductDto> getProducts(@RequestParam String category,
-                                        @RequestParam(defaultValue = "0") int page,
-                                        @RequestParam(defaultValue = "20") int size,
-                                        @RequestParam(defaultValue = "productName,asc") String[] sort) {
+                                        @PageableDefault(page = 0, size = 20, sort = "productName", direction = Sort.Direction.ASC) Pageable pageable) {
         ProductCategory productCategory = ProductCategory.valueOf(category.toUpperCase());
-        String sortParam = sort[0];
-        String[] parts = sortParam.split(",");
-        String property = parts[0].trim();
-        Sort.Direction direction = Sort.Direction.ASC;
-        if (parts.length > 1 && parts[1].trim().equalsIgnoreCase("desc")) {
-            direction = Sort.Direction.DESC;
-        }
-        // Используем прямой метод PageRequest.of с direction и property
-        PageRequest pageRequest = PageRequest.of(page, size, direction, property);
-        return productRepository.findByCategory(productCategory, pageRequest)
+        return productRepository.findByCategory(productCategory, pageable)
                 .map(this::toDto);
     }
 
@@ -71,11 +61,10 @@ public class StoreController {
     }
 
     @PostMapping("/quantityState")
-    public Boolean setProductQuantityState(@RequestParam UUID productId,
-                                           @RequestParam QuantityState quantityState) {
-        ProductEntity entity = productRepository.findById(productId)
+    public Boolean setProductQuantityState(@RequestBody SetProductQuantityStateRequest request) {
+        ProductEntity entity = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new RuntimeException("Product not found"));
-        entity.setQuantityState(quantityState);
+        entity.setQuantityState(request.getQuantityState());
         productRepository.save(entity);
         return true;
     }
