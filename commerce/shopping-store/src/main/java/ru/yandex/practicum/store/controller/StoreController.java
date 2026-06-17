@@ -61,10 +61,11 @@ public class StoreController {
     }
 
     @PostMapping("/quantityState")
-    public Boolean setProductQuantityState(@RequestBody SetProductQuantityStateRequest request) {
-        ProductEntity entity = productRepository.findById(request.getProductId())
+    public Boolean setProductQuantityState(@RequestParam UUID productId,
+                                           @RequestParam QuantityState quantityState) {
+        ProductEntity entity = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
-        entity.setQuantityState(request.getQuantityState());
+        entity.setQuantityState(quantityState);
         productRepository.save(entity);
         return true;
     }
