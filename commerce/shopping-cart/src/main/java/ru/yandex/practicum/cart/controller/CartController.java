@@ -1,6 +1,7 @@
 package ru.yandex.practicum.cart.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.interaction.*;
 import ru.yandex.practicum.cart.service.CartService;
@@ -14,30 +15,31 @@ public class CartController {
     private final CartService cartService;
 
     @GetMapping
-    public ShoppingCartDto getShoppingCart(@RequestParam String username) {
-        return cartService.getCart(username);
+    public ResponseEntity<ShoppingCartDto> getShoppingCart(@RequestParam String username) {
+        return ResponseEntity.ok(cartService.getCart(username));
     }
 
     @PutMapping
-    public ShoppingCartDto addProductToShoppingCart(@RequestParam String username,
-                                                    @RequestBody Map<UUID, Integer> products) {
-        return cartService.addProducts(username, products);
+    public ResponseEntity<ShoppingCartDto> addProductToShoppingCart(@RequestParam String username,
+                                                                    @RequestBody Map<UUID, Integer> products) {
+        return ResponseEntity.ok(cartService.addProducts(username, products));
     }
 
     @PostMapping("/change-quantity")
-    public ShoppingCartDto changeProductQuantity(@RequestParam String username,
-                                                 @RequestBody ChangeProductQuantityRequest request) {
-        return cartService.changeQuantity(username, request);
+    public ResponseEntity<ShoppingCartDto> changeProductQuantity(@RequestParam String username,
+                                                                 @RequestBody ChangeProductQuantityRequest request) {
+        return ResponseEntity.ok(cartService.changeQuantity(username, request));
     }
 
     @PostMapping("/remove")
-    public ShoppingCartDto removeFromShoppingCart(@RequestParam String username,
-                                                  @RequestBody List<UUID> productIds) {
-        return cartService.removeProducts(username, productIds);
+    public ResponseEntity<ShoppingCartDto> removeFromShoppingCart(@RequestParam String username,
+                                                                  @RequestBody List<UUID> productIds) {
+        return ResponseEntity.ok(cartService.removeProducts(username, productIds));
     }
 
     @DeleteMapping
-    public void deactivateCurrentShoppingCart(@RequestParam String username) {
+    public ResponseEntity<Void> deactivateCurrentShoppingCart(@RequestParam String username) {
         cartService.deactivateCart(username);
+        return ResponseEntity.ok().build();
     }
 }

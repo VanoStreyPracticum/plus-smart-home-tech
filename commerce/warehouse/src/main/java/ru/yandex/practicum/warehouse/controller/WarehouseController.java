@@ -1,6 +1,7 @@
 package ru.yandex.practicum.warehouse.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.interaction.*;
 import ru.yandex.practicum.warehouse.service.WarehouseService;
@@ -14,22 +15,24 @@ public class WarehouseController {
     private final WarehouseService warehouseService;
 
     @PutMapping
-    public void newProductInWarehouse(@RequestBody NewProductInWarehouseRequest request) {
+    public ResponseEntity<Void> newProductInWarehouse(@RequestBody NewProductInWarehouseRequest request) {
         warehouseService.newProductInWarehouse(request);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/check")
-    public Map<UUID, Boolean> checkProductQuantityEnoughForShoppingCart(@RequestBody ShoppingCartDto cartDto) {
-        return warehouseService.checkCart(cartDto);
+    public ResponseEntity<Map<UUID, Boolean>> checkProductQuantityEnoughForShoppingCart(@RequestBody ShoppingCartDto cartDto) {
+        return ResponseEntity.ok(warehouseService.checkCart(cartDto));
     }
 
     @PostMapping("/add")
-    public void addProductToWarehouse(@RequestBody AddProductToWarehouseRequest request) {
+    public ResponseEntity<Void> addProductToWarehouse(@RequestBody AddProductToWarehouseRequest request) {
         warehouseService.addProductToWarehouse(request);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/address")
-    public AddressDto getWarehouseAddress() {
-        return warehouseService.getAddress();
+    public ResponseEntity<AddressDto> getWarehouseAddress() {
+        return ResponseEntity.ok(warehouseService.getAddress());
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.interaction.*;
 import ru.yandex.practicum.store.model.ProductEntity;
@@ -19,23 +20,23 @@ public class StoreController {
     private final ProductRepository productRepository;
 
     @GetMapping
-    public Page<ProductDto> getProducts(@RequestParam String category,
-                                        @PageableDefault(page = 0, size = 20, sort = "productName", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<ProductDto>> getProducts(@RequestParam String category,
+                                                         @PageableDefault(page = 0, size = 20, sort = "productName", direction = Sort.Direction.ASC) Pageable pageable) {
         ProductCategory productCategory = ProductCategory.valueOf(category.toUpperCase());
-        return productRepository.findByCategory(productCategory, pageable)
-                .map(this::toDto);
+        return ResponseEntity.ok(productRepository.findByCategory(productCategory, pageable)
+                .map(this::toDto));
     }
 
     @PutMapping
-    public ProductDto createNewProduct(@RequestBody ProductDto productDto) {
+    public ResponseEntity<ProductDto> createNewProduct(@RequestBody ProductDto productDto) {
         ProductEntity entity = toEntity(productDto);
         entity.setProductId(UUID.randomUUID());
         entity = productRepository.save(entity);
-        return toDto(entity);
+        return ResponseEntity.ok(toDto(entity));
     }
 
     @PostMapping
-    public ProductDto updateProduct(@RequestBody ProductDto productDto) {
+    public ResponseEntity<ProductDto> updateProduct(@RequestBody ProductDto productDto) {
         ProductEntity entity = productRepository.findById(productDto.getProductId())
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         entity.setProductName(productDto.getProductName());
@@ -46,35 +47,35 @@ public class StoreController {
         entity.setQuantityState(productDto.getQuantityState());
         entity.setState(productDto.getProductState());
         entity = productRepository.save(entity);
-        return toDto(entity);
+        return ResponseEntity.ok(toDto(entity));
     }
 
     @PostMapping("/removeProductFromStore")
-    public Boolean removeProductFromStore(@RequestBody String productId) {
+    public ResponseEntity<Boolean> removeProductFromStore(@RequestBody String productId) {
         String clean = productId.replaceAll("^\"|\"$", "").trim();
         UUID id = UUID.fromString(clean);
         ProductEntity entity = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         entity.setState(ProductState.DEACTIVATE);
         productRepository.save(entity);
-        return true;
+        return ResponseEntity.ok(true);
     }
 
     @PostMapping("/quantityState")
-    public Boolean setProductQuantityState(@RequestParam UUID productId,
-                                           @RequestParam QuantityState quantityState) {
+    public ResponseEntity<Boolean> setProductQuantityState(@RequestParam UUID productId,
+                                                            @RequestParam QuantityState quantityState) {
         ProductEntity entity = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         entity.setQuantityState(quantityState);
         productRepository.save(entity);
-        return true;
+        return ResponseEntity.ok(true);
     }
 
     @GetMapping("/{productId}")
-    public ProductDto getProduct(@PathVariable UUID productId) {
+    public ResponseEntity<ProductDto> getProduct(@PathVariable UUID productId) {
         ProductEntity entity = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
-        return toDto(entity);
+        return ResponseEntity.ok(toDto(entity));
     }
 
     private ProductDto toDto(ProductEntity entity) {
