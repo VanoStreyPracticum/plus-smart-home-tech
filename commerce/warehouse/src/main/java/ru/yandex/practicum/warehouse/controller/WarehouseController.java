@@ -21,7 +21,7 @@ public class WarehouseController {
     }
 
     @PostMapping("/check")
-    public ResponseEntity<Map<UUID, Boolean>> checkProductQuantityEnoughForShoppingCart(@RequestBody ShoppingCartDto cartDto) {
+    public ResponseEntity<BookedProductsDto> checkProductQuantityEnoughForShoppingCart(@RequestBody ShoppingCartDto cartDto) {
         return ResponseEntity.ok(warehouseService.checkCart(cartDto));
     }
 
@@ -34,5 +34,22 @@ public class WarehouseController {
     @GetMapping("/address")
     public ResponseEntity<AddressDto> getWarehouseAddress() {
         return ResponseEntity.ok(warehouseService.getAddress());
+    }
+
+    @PostMapping("/assembly")
+    public ResponseEntity<BookedProductsDto> assemblyProductsForOrder(@RequestBody AssemblyProductsForOrderRequest request) {
+        return ResponseEntity.ok(warehouseService.assemblyProductsForOrder(request));
+    }
+
+    @PostMapping("/shipped")
+    public ResponseEntity<Void> shippedToDelivery(@RequestBody ShippedToDeliveryRequest request) {
+        warehouseService.shippedToDelivery(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/return")
+    public ResponseEntity<Void> acceptReturn(@RequestBody Map<UUID, Integer> products) {
+        warehouseService.acceptReturn(products);
+        return ResponseEntity.ok().build();
     }
 }

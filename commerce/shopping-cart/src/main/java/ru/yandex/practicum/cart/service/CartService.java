@@ -23,13 +23,9 @@ public class CartService {
     public ShoppingCartDto addProducts(String userName, Map<UUID, Integer> products) {
         CartEntity cart = cartRepository.findByUserName(userName)
                 .orElseGet(() -> createEmptyCart(userName));
-        // проверка на складе
         ShoppingCartDto tempCart = toDto(cart);
         tempCart.getProducts().putAll(products);
-        Map<UUID, Boolean> availability = warehouseFeignClient.checkCart(tempCart);
-        if (availability.containsValue(false)) {
-            throw new RuntimeException("Not enough stock for some products");
-        }
+        warehouseFeignClient.checkCart(tempCart); // выбросит исключение при недостатке
         cart.getProducts().putAll(products);
         cart = cartRepository.save(cart);
         return toDto(cart);

@@ -6,6 +6,7 @@ services:
     ports:
       - "9092:9092"
       - "9101:9101"
+    restart: unless-stopped
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
@@ -38,10 +39,13 @@ services:
     container_name: postgres
     ports:
       - "5432:5432"
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: smart_home
+    volumes:
+      - ./init-schemas.sql:/docker-entrypoint-initdb.d/init-schemas.sql
 
   hub-router:
     image: eclipse-temurin:21-jre
@@ -49,7 +53,7 @@ services:
     depends_on:
       - kafka
     volumes:
-      - ./hub-router.jar:/app/hub-router.jar
+      - ./hub-router/scripts/hub-router.jar:/app/hub-router.jar
     working_dir: /app
     command: ["java", "-jar", "hub-router.jar", "--server.port=59090"]
     ports:
